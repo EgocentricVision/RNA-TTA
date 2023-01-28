@@ -66,3 +66,21 @@ def get_L2norm_loss_self_driven(x, radius, modality=None):
     loss = (x - radius) ** 2
     return loss
 
+
+################## CENT loss ####################
+def CENT_loss(output, p_label, classes=8):
+
+    batch_size = len(p_label)
+    output = F.softmax(output, dim=1)
+    Yg = torch.gather(output, 1, torch.unsqueeze(p_label, 1))
+    Yg_ = (1 - Yg) + 1e-7  # avoiding numerical issues (first)
+    Px = output / Yg_.view(len(output), 1)
+    Px_log = torch.log(Px + 1e-10)  # avoiding numerical issues (second)
+    y_zerohot = torch.ones(batch_size, classes).scatter_(1, p_label.view(batch_size, 1).data.cpu(), 0)
+    output = Px * Px_log * y_zerohot.cuda()
+    loss = torch.sum(output)
+    loss /= float(batch_size)
+    loss /= float(classes)
+    return loss
+
+
